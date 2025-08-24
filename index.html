@@ -585,28 +585,5 @@ window.addEventListener("load", checkOrientation);
 window.addEventListener("resize", checkOrientation);
 window.addEventListener("orientationchange", checkOrientation);
 </script>
-    <script>
-// Cria o AudioContext só uma vez
-const context = new (window.AudioContext || window.webkitAudioContext)();
-
-function tocarSom() {
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
-
-    oscillator.type = 'sine';           
-    oscillator.frequency.value = 440;   
-    gainNode.gain.value = 0.2;          
-
-    oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
-
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.1); 
-}
-
-// Dispara ao clicar ou tocar
-document.addEventListener("click", tocarSom);
-document.addEventListener("touchstart", tocarSom)
-</script>
 </body>
 </html>
