@@ -1,6 +1,28 @@
 <!<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script>
+function tocarSom() {
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+
+    oscillator.type = 'sine'; // tipo de onda: sine, square, triangle, sawtooth
+    oscillator.frequency.setValueAtTime(440, context.currentTime); // frequência em Hz (440 = Lá)
+    
+    gainNode.gain.setValueAtTime(0.2, context.currentTime); // volume
+
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.1); // duração de 0.1s
+}
+
+// Clicar ou tocar na tela dispara o som
+document.addEventListener("click", tocarSom);
+document.addEventListener("touchstart", tocarSom);
+    </script>
     <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0000ff">
     <meta charset="UTF-8">
