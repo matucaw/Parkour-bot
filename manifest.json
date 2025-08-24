@@ -3,8 +3,8 @@
   "short_name": "ParkourBot",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0000ff",
+  "background_color": "#87CEEB",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "favicon-192.png",
