@@ -529,6 +529,33 @@
     }
     
     init();
+// Detecta se é celular
+function isMobile() {
+    return /Android|iPhone|iPad|iPod|Windows Phone|webOS/i.test(navigator.userAgent);
+}
+
+function checkOrientation() {
+    const menu = document.getElementById("main-menu");
+
+    if (isMobile()) {
+        if (window.innerHeight > window.innerWidth) {
+            // Retrato → trava o jogo e mostra aviso
+            menu.classList.add("portrait-mode");
+        } else {
+            // Paisagem → libera o jogo
+            menu.classList.remove("portrait-mode");
+        }
+    } else {
+        // Se for PC, nunca mostra o aviso
+        menu.classList.remove("portrait-mode");
+    }
+}
+
+// Executa ao carregar
+window.addEventListener("load", checkOrientation);
+// Executa sempre que girar a tela
+window.addEventListener("resize", checkOrientation);
+window.addEventListener("orientationchange", checkOrientation);
 </script>
 </body>
 </html>
