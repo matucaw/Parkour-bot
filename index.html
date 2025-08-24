@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>ParkourBot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <style>
+        :root {
+            --sky-color: #87CEEB;
+            --ground-color: #CD853F;
+            --ground-top-color: #DEB887;
+            --ai-color: #E63946;
+            --spawn-color: #FFD700;
+            --flag-pole-color: #666666;
+            --ball-color: #FFD700; /* NOVO: Cor da bola amarela */
+            
+            --ui-bg: rgba(0, 0, 0, 0.5);
+            --ui-button-bg: #f0f0f0;
+            --ui-button-text: #333;
+            --ui-button-selected-border: #FFD700;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--sky-color);
+            font-family: 'Arial Black', Gadget, sans-serif;
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            padding: 10px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        #ui-container.visible {
+            display: flex;
+        }
+
+        .ui-panel {
+            display: flex;
+            gap: 10px;
+            padding: 8px;
+            background-color: var(--ui-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .tool-button {
+            height: 50px; min-width: 60px; padding: 0 12px; background-color: var(--ui-button-bg);
+            color: var(--ui-button-text); border: 3px solid transparent; border-radius: 10px;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            transition: transform 0.1s ease, border-color 0.2s; font-size: 14px;
+            font-weight: bold; text-transform: uppercase;
+        }
+
+        #sim-button {
+            width: 50px; height: 50px; background-color: var(--ui-button-bg); border: 3px solid transparent;
+            border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center;
+            transition: transform 0.1s ease;
+        }
+
+        #sim-button svg { width: 24px; height: 24px; fill: var(--ui-button-text); }
+        .tool-button:active, #sim-button:active { transform: scale(0.95); }
+        .tool-button.selected { border-color: var(--ui-button-selected-border); }
+
+        #center-view-button {
+            width: 50px; min-width: 50px; padding: 0;
+        }
+        #center-view-button svg {
+            width: 28px; height: 28px; stroke: var(--ui-button-text); stroke-width: 2;
+        }
+        
+        #joystick-container {
+            position: absolute;
+            bottom: 20px; left: 20px;
+            width: 120px; height: 120px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            z-index: 20;
+            display: none;
+        }
+        #joystick-container.visible {
+            display: block;
+        }
+        #joystick-thumb {
+            position: absolute;
+            width: 60px; height: 60px;
+            top: 30px; left: 30px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            touch-action: none;
+        }
+
+        /* --- ESTILOS DO MENU --- */
+        .menu-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .menu-box {
+            background-color: var(--ui-button-bg);
+            color: var(--ui-button-text);
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            max-width: 90%;
+        }
+        
+        .menu-box h1 {
+            margin-top: 0; margin-bottom: 25px; font-size: 2.5rem; text-transform: uppercase;
+        }
+
+        .menu-button {
+            display: block; width: 100%; padding: 15px 20px; margin-bottom: 15px; font-size: 1.2rem;
+            font-weight: bold; text-transform: uppercase; cursor: pointer; border: 2px solid var(--ui-button-text);
+            border-radius: 12px; background-color: transparent; color: var(--ui-button-text);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .menu-button:last-child { margin-bottom: 0; }
+        .menu-button:hover { background-color: var(--ui-button-text); color: var(--ui-button-bg); }
+
+        #how-to-play-overlay { display: none; font-family: Arial, sans-serif; font-size: 1rem; text-align: left; }
+        #how-to-play-overlay .menu-box { width: 500px; max-height: 90vh; overflow-y: auto; }
+        #how-to-play-overlay h2 { text-align: center; margin-top: 0; margin-bottom: 20px; }
+        #how-to-play-overlay ul { padding-left: 20px; margin-top: 0; }
+        #how-to-play-overlay li { margin-bottom: 12px; }
+
+        .orientation-message {
+            display: none;
+            padding: 20px;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+        .menu-overlay.portrait-mode .menu-box {
+            display: none;
+        }
+        .menu-overlay.portrait-mode .orientation-message {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menu Principal -->
+    <div id="main-menu" class="menu-overlay">
+        <div class="menu-box">
+            <h1>ParkourBot</h1>
+            <button id="start-game-btn" class="menu-button">Iniciar Jogo</button>
+            <button id="how-to-play-btn" class="menu-button">Como Jogar</button>
+        </div>
+        <div class="orientation-message">
+            <p>Por favor, vire o celular para o modo paisagem para jogar.</p>
+        </div>
+    </div>
+
+    <!-- Tela de Como Jogar -->
+    <div id="how-to-play-overlay" class="menu-overlay">
+        <div class="menu-box">
+            <h2>Como Jogar</h2>
+            <p>O objetivo é criar um caminho para que o ParkourBot chegue do ponto de <strong>Início</strong> até a bandeira de <strong>Fim</strong>, coletando as <strong>Bolas Amarelas</strong> em ordem numérica se elas existirem.</p>
+            <h3>Ferramentas de Edição:</h3>
+            <ul>
+                <li><strong>Bloco:</strong> Cria blocos de terra. Toque e arraste para desenhar o cenário.</li>
+                <li><strong>Apagar:</strong> Remove blocos e outros objetos.</li>
+                <li><strong>Início:</strong> Define onde o Bot irá começar a fase.</li>
+                <li><strong>Fim:</strong> Define a bandeira de chegada.</li>
+                <li><strong>Bola:</strong> Coloca bolas numeradas que são o primeiro objetivo do Bot.</li>
+                <li><strong>Mira (Centralizar):</strong> Move a câmera de volta para o centro do mundo.</li>
+            </ul>
+            <h3>Simulação:</h3>
+            <ul>
+                <li><strong>Botão de Play:</strong> Inicia a simulação. O Bot irá para a bola com o menor número, e depois para a próxima, até acabar. Se não houver bolas, ele vai direto para a bandeira.</li>
+                <li><strong>Botão de Stop:</strong> Para a simulação e retorna ao modo de edição.</li>
+            </ul>
+            <button id="close-how-to-play-btn" class="menu-button">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Conteúdo do Jogo -->
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-container">
+        <div class="ui-panel">
+            <button id="tool-block" class="tool-button selected" title="Bloco">Bloco</button>
+            <button id="tool-erase" class="tool-button" title="Borracha">Apagar</button>
+            <button id="tool-spawn" class="tool-button" title="Início">Início</button>
+            <button id="tool-finish" class="tool-button" title="Chegada">Fim</button>
+            <!-- NOVO: Botão para a Bola Amarela -->
+            <button id="tool-ball" class="tool-button" title="Bola Amarela">Bola</button>
+            <button id="center-view-button" class="tool-button" title="Centralizar Visão">
+                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+            </button>
+            <button id="sim-button" title="Iniciar Simulação">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+        </div>
+    </div>
+    <div id="joystick-container">
+        <div id="joystick-thumb"></div>
+    </div>
+    
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const TILE_SIZE = 40, GRAVITY = 1200, AI_SPEED = 120, AI_JUMP_POWER = 500;
+    
+    let gameState = 'menu', currentTool = 'block';
+    let world = new Map(), spawnPoint = null, finishPoint = null;
+    
+    // NOVO: Variáveis para as bolas amarelas
+    let yellowBalls = []; // Guarda as bolas no modo de edição
+    let activeSimBalls = []; // Guarda as bolas durante a simulação
+    let nextBallNumber = 1; // Contador para o número da próxima bola
+
+    let ai = {
+        x: 0, y: 0, w: TILE_SIZE * 0.8, h: TILE_SIZE * 0.8,
+        vx: 0, vy: 0, onGround: false, scaleY: 1, targetScaleY: 1
+    };
+    const colors = {};
+    let camera = { x: 0, y: 0, targetX: 0, targetY: 0 };
+    let lastTime = 0;
+    let pan = { startX: 0, startY: 0, camX: 0, camY: 0, active: false };
+    let isDrawing = false;
+    let gameHasStarted = false;
+
+    const ICONS = {
+        play: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
+        stop: `<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>`
+    };
+
+    const getGridCoords = (wx, wy) => ({ x: Math.floor(wx / TILE_SIZE), y: Math.floor(wy / TILE_SIZE) });
+    const getTileKey = (gx, gy) => `${gx},${gy}`;
+    const setTile = (gx, gy, type) => { if (type === 0) world.delete(getTileKey(gx, gy)); else world.set(getTileKey(gx, gy), type); };
+    const getTile = (gx, gy) => world.get(getTileKey(gx, gy));
+    const screenToWorld = (sx, sy) => ({ x: sx + camera.x, y: sy + camera.y });
+
+    function startSimulation() {
+        if (!spawnPoint || !finishPoint) { alert("Defina um ponto de INÍCIO e FIM antes de simular!"); return; }
+        gameState = 'sim';
+        ai.x = spawnPoint.x * TILE_SIZE + (TILE_SIZE - ai.w) / 2;
+        ai.y = spawnPoint.y * TILE_SIZE + (TILE_SIZE - ai.h);
+        ai.vx = 0; ai.vy = 0; ai.onGround = false;
+        
+        // NOVO: Prepara as bolas para a simulação
+        // Cria uma cópia e ordena pelo número para que o bot pegue na ordem correta
+        activeSimBalls = [...yellowBalls].sort((a, b) => a.number - b.number);
+        
+        camera.targetX = ai.x - canvas.width / 2; camera.targetY = ai.y - canvas.height / 2;
+        camera.x = camera.targetX; camera.y = camera.targetY;
+        document.getElementById('sim-button').innerHTML = ICONS.stop;
+        document.getElementById('joystick-container').classList.remove('visible');
+    }
+
+    function stopSimulation() {
+        gameState = 'edit';
+        document.getElementById('sim-button').innerHTML = ICONS.play;
+        document.getElementById('joystick-container').classList.add('visible');
+    }
+    
+    // MODIFICADO: Lógica da IA completamente refeita
+    function updateAI(dt) {
+        // 1. Determinar o alvo atual
+        let currentTarget = null;
+        if (activeSimBalls.length > 0) {
+            currentTarget = activeSimBalls[0]; // O alvo é a bola com o menor número
+        } else {
+            currentTarget = finishPoint; // Se não há bolas, o alvo é a bandeira
+        }
+
+        if (!currentTarget) { // Se não há alvo, não faz nada
+            ai.vx = 0;
+            return;
+        }
+
+        // 2. Mover em direção ao alvo
+        const targetDirection = Math.sign(currentTarget.x * TILE_SIZE - ai.x);
+        ai.vx = targetDirection * AI_SPEED;
+
+        // 3. Lógica de Pulo (igual a antes)
+        if (ai.onGround) {
+            const aiBodyGridY = getGridCoords(ai.x, ai.y + ai.h / 2).y;
+            const frontGridX = getGridCoords(ai.x + ai.w / 2, ai.y).x + targetDirection;
+            const wallInFront = getTile(frontGridX, aiBodyGridY);
+            if (wallInFront) {
+                ai.vy = -AI_JUMP_POWER; ai.onGround = false; ai.targetScaleY = 0.7;
+            } else {
+                const edgeDetectorX = ai.x + (targetDirection > 0 ? ai.w + 1 : -1);
+                const edgeDetectorY = ai.y + ai.h + 1;
+                const groundUnderEdge = getTile(getGridCoords(edgeDetectorX, edgeDetectorY).x, getGridCoords(edgeDetectorX, edgeDetectorY).y);
+                if (!groundUnderEdge) {
+                    ai.vy = -AI_JUMP_POWER; ai.onGround = false; ai.targetScaleY = 0.7;
+                }
+            }
+        }
+
+        // 4. Física e Colisão com o cenário (igual a antes)
+        ai.vy += GRAVITY * dt;
+        ai.x += ai.vx * dt;
+        let gridX = getGridCoords(ai.x + (ai.vx > 0 ? ai.w : 0), ai.y + ai.h / 2);
+        if (getTile(gridX.x, gridX.y)) ai.x = (ai.vx > 0) ? gridX.x * TILE_SIZE - ai.w : (gridX.x + 1) * TILE_SIZE;
+        ai.y += ai.vy * dt;
+        ai.onGround = false;
+        const feetGrid = getGridCoords(ai.x + ai.w / 2, ai.y + ai.h);
+        if (ai.vy > 0 && getTile(feetGrid.x, feetGrid.y)) {
+            ai.y = feetGrid.y * TILE_SIZE - ai.h; ai.vy = 0; ai.onGround = true; ai.targetScaleY = 1.2;
+        }
+        const headGrid = getGridCoords(ai.x + ai.w / 2, ai.y);
+        if (ai.vy < 0 && getTile(headGrid.x, headGrid.y)) {
+            ai.y = (headGrid.y + 1) * TILE_SIZE; ai.vy = 0;
+        }
+        ai.scaleY += (ai.targetScaleY - ai.scaleY) * 0.2;
+        if(Math.abs(ai.scaleY - ai.targetScaleY) < 0.01) ai.targetScaleY = 1;
+        if (ai.y > camera.y + canvas.height + 200) stopSimulation();
+
+        // 5. Verificar se chegou ao alvo
+        const aiGridPos = getGridCoords(ai.x + ai.w/2, ai.y + ai.h/2);
+        if (aiGridPos.x === currentTarget.x && aiGridPos.y === currentTarget.y) {
+            if (currentTarget === activeSimBalls[0]) {
+                // Se chegou na bola, remove ela da lista de ativos
+                activeSimBalls.shift(); 
+            } else if (currentTarget === finishPoint) {
+                // Se chegou na bandeira (e não há mais bolas), venceu
+                alert("ParkourBot Venceu!"); 
+                stopSimulation();
+            }
+        }
+    }
+    
+    function drawFinishFlag(gx, gy) {
+        const px = gx * TILE_SIZE, py = gy * TILE_SIZE, poleWidth = TILE_SIZE / 10;
+        ctx.fillStyle = colors.flagPole;
+        ctx.fillRect(px + poleWidth, py, poleWidth, TILE_SIZE);
+        const flagX = px + poleWidth * 2, flagY = py, flagWidth = TILE_SIZE * 0.7, flagHeight = TILE_SIZE * 0.5;
+        const numChecksX = 4, numChecksY = 2, checkW = flagWidth / numChecksX, checkH = flagHeight / numChecksY;
+        for (let i = 0; i < numChecksY; i++) {
+            for (let j = 0; j < numChecksX; j++) {
+                ctx.fillStyle = (i + j) % 2 === 0 ? '#FFFFFF' : '#000000';
+                ctx.fillRect(flagX + j * checkW, flagY + i * checkH, checkW, checkH);
+            }
+        }
+    }
+    
+    // NOVO: Função para desenhar a bola amarela e seu número
+    function drawYellowBall(ball) {
+        const px = ball.x * TILE_SIZE;
+        const py = ball.y * TILE_SIZE;
+        const radius = TILE_SIZE * 0.4;
+        
+        ctx.fillStyle = colors.ball;
+        ctx.beginPath();
+        ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#000000';
+        ctx.font = `bold ${TILE_SIZE * 0.5}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ball.number, px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (gameState !== 'menu') {
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+            const startCol = Math.floor(camera.x / TILE_SIZE)-1, endCol = startCol + Math.ceil(canvas.width / TILE_SIZE)+2;
+            const startRow = Math.floor(camera.y / TILE_SIZE)-1, endRow = startRow + Math.ceil(canvas.height / TILE_SIZE)+2;
+            for (let y = startRow; y < endRow; y++) {
+                for (let x = startCol; x < endCol; x++) {
+                    if (getTile(x, y)) {
+                        ctx.fillStyle = getTile(x, y-1) ? colors.ground : colors.groundTop;
+                        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = colors.ground;
+                        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE + 10, TILE_SIZE, TILE_SIZE-10);
+                    }
+                }
+            }
+            if (spawnPoint) { ctx.fillStyle = colors.spawn; ctx.fillRect(spawnPoint.x*TILE_SIZE, spawnPoint.y*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
+            if (finishPoint) drawFinishFlag(finishPoint.x, finishPoint.y);
+            
+            // NOVO: Desenha as bolas
+            const ballsToDraw = (gameState === 'sim') ? activeSimBalls : yellowBalls;
+            ballsToDraw.forEach(drawYellowBall);
+
+            if (gameState === 'sim') {
+                ctx.fillStyle = colors.ai;
+                const scaledH = ai.h*ai.scaleY, scaledW = ai.w/ai.scaleY;
+                ctx.fillRect(ai.x+(ai.w-scaledW)/2, ai.y+ai.h-scaledH, scaledW, scaledH);
+            }
+            ctx.restore();
+        }
+    }
+    
+    function gameLoop(timestamp) {
+        const dt = (timestamp - lastTime) / 1000 || 0;
+        lastTime = timestamp;
+        if (gameState === 'sim') { updateAI(dt); camera.targetX = ai.x-canvas.width/2; camera.targetY = ai.y-canvas.height/2; }
+        if (gameState !== 'menu') { camera.x += (camera.targetX-camera.x)*0.1; camera.y += (camera.targetY-camera.y)*0.1; }
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // MODIFICADO: Lógica de edição para incluir a bola
+    function handleEdit(e) {
+        if (gameState !== 'edit' || !isDrawing) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const worldPos = screenToWorld(touch.clientX, touch.clientY);
+        const gridPos = getGridCoords(worldPos.x, worldPos.y);
+        
+        const isSpawn = spawnPoint && spawnPoint.x === gridPos.x && spawnPoint.y === gridPos.y;
+        const isFinish = finishPoint && finishPoint.x === gridPos.x && finishPoint.y === gridPos.y;
+        const ballIndex = yellowBalls.findIndex(b => b.x === gridPos.x && b.y === gridPos.y);
+
+        switch (currentTool) {
+            case 'block': 
+                setTile(gridPos.x, gridPos.y, 1); 
+                break;
+            case 'erase': 
+                if (isSpawn) spawnPoint = null; 
+                else if (isFinish) finishPoint = null; 
+                else if (ballIndex > -1) yellowBalls.splice(ballIndex, 1);
+                else setTile(gridPos.x, gridPos.y, 0); 
+                break;
+            case 'spawn': 
+                spawnPoint = gridPos; 
+                break;
+            case 'finish': 
+                finishPoint = gridPos; 
+                break;
+            case 'ball': // NOVO: Colocar uma bola
+                if (ballIndex === -1) { // Só adiciona se não houver uma bola no local
+                    yellowBalls.push({ x: gridPos.x, y: gridPos.y, number: nextBallNumber });
+                    nextBallNumber++;
+                }
+                break;
+        }
+    }
+
+    function setupGameEventListeners() {
+        canvas.addEventListener('mousedown', e => { if (e.button === 0) { isDrawing = true; handleEdit(e); } else if (e.button === 1) { pan.active = true; pan.startX = e.clientX; pan.startY = e.clientY; pan.camX = camera.targetX; pan.camY = camera.targetY; } });
+        canvas.addEventListener('mousemove', e => { if (isDrawing) handleEdit(e); if (pan.active) { camera.targetX = pan.camX - (e.clientX - pan.startX); camera.targetY = pan.camY - (e.clientY - pan.startY); } });
+        window.addEventListener('mouseup', e => { isDrawing = false; if (e.button === 1) pan.active = false; });
+        canvas.addEventListener('touchstart', e => { if (e.touches.length === 1) { isDrawing = true; handleEdit(e); } else if (e.touches.length === 2) { isDrawing = false; pan.active = true; pan.startX = (e.touches[0].clientX + e.touches[1].clientX)/2; pan.startY = (e.touches[0].clientY + e.touches[1].clientY)/2; pan.camX = camera.targetX; pan.camY = camera.targetY; } }, { passive: false });
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); if (isDrawing && e.touches.length === 1) handleEdit(e); else if (pan.active && e.touches.length === 2) { const currentX = (e.touches[0].clientX + e.touches[1].clientX)/2; const currentY = (e.touches[0].clientY + e.touches[1].clientY)/2; camera.targetX = pan.camX - (currentX - pan.startX); camera.targetY = pan.camY - (currentY - pan.startY); } }, { passive: false });
+        window.addEventListener('touchend', e => { if (e.touches.length < 2) pan.active = false; if (e.touches.length < 1) isDrawing = false; });
+        
+        const toolButtons = document.querySelectorAll('.tool-button');
+        toolButtons.forEach(btn => { btn.addEventListener('click', () => { toolButtons.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); currentTool = btn.id.split('-')[1]; }); });
+        document.getElementById('sim-button').addEventListener('click', () => { if (gameState === 'edit') startSimulation(); else stopSimulation(); });
+        document.getElementById('center-view-button').addEventListener('click', () => { camera.targetX = -canvas.width/2; camera.targetY = -canvas.height/2; });
+
+        const joyContainer = document.getElementById('joystick-container');
+        let touchId=null, startX=0, startY=0, isJoyActive=false;
+        function onJoyMove(e) { for (const t of e.changedTouches||[e]) { if (isJoyActive && (touchId===null||t.identifier===touchId)) { let dx=t.clientX-startX; let dy=t.clientY-startY; let camDirX=dx>10?1:dx<-10?-1:0; let camDirY=dy>10?1:dy<-10?-1:0; camera.targetX+=camDirX*5; camera.targetY+=camDirY*5; } } }
+        function onJoyEnd() { isJoyActive=false; touchId=null; window.removeEventListener('mousemove',onJoyMove); window.removeEventListener('mouseup',onJoyEnd); window.removeEventListener('touchmove',onJoyMove); window.removeEventListener('touchend',onJoyEnd); }
+        function onJoyStart(e) { e.stopPropagation(); isDrawing=false; pan.active=false; isJoyActive=true; const touch=e.changedTouches?e.changedTouches[0]:e; touchId=touch.identifier??null; 
+            startX=touch.clientX; startY=touch.clientY; window.addEventListener('mousemove',onJoyMove); window.addEventListener('mouseup',onJoyEnd); window.addEventListener('touchmove',onJoyMove); window.addEventListener('touchend',onJoyEnd);
+        }
+        joyContainer.addEventListener('mousedown', onJoyStart);
+        joyContainer.addEventListener('touchstart', onJoyStart, { passive: true });
+    }
+
+    function checkOrientation() {
+        const mainMenu = document.getElementById('main-menu');
+        if (window.innerHeight > window.innerWidth && gameHasStarted) {
+            mainMenu.classList.add('portrait-mode');
+        } else {
+            mainMenu.classList.remove('portrait-mode');
+        }
+    }
+
+    function init() {
+        const style = getComputedStyle(document.body);
+        colors.sky = style.getPropertyValue('--sky-color');
+        colors.ground = style.getPropertyValue('--ground-color');
+        colors.groundTop = style.getPropertyValue('--ground-top-color');
+        colors.ai = style.getPropertyValue('--ai-color');
+        colors.spawn = style.getPropertyValue('--spawn-color');
+        colors.flagPole = style.getPropertyValue('--flag-pole-color');
+        colors.ball = style.getPropertyValue('--ball-color'); // NOVO
+
+        const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; checkOrientation(); };
+        window.addEventListener('resize', resize);
+        resize();
+
+        document.getElementById('start-game-btn').addEventListener('click', () => {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('ui-container').classList.add('visible');
+            document.getElementById('joystick-container').classList.add('visible');
+            gameState = 'edit';
+            gameHasStarted = true;
+            checkOrientation();
+        });
+        document.getElementById('how-to-play-btn').addEventListener('click', () => {
+            document.getElementById('how-to-play-overlay').style.display = 'flex';
+        });
+        document.getElementById('close-how-to-play-btn').addEventListener('click', () => {
+            document.getElementById('how-to-play-overlay').style.display = 'none';
+        });
+
+        setupGameEventListeners();
+        camera.targetX = -canvas.width/2;
+        camera.targetY = -canvas.height/2;
+        requestAnimationFrame(gameLoop);
+    }
+    
+    init();
+</script>
+</body>
+</html>
