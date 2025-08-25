@@ -1,6 +1,6 @@
 {
   "name": "Parkour Bot",
-  "short_name": "ParkourBot",
+  "short_name": "Parkour Bot",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "landscape",
