@@ -227,24 +227,27 @@
         #how-to-play-overlay li { margin-bottom: 12px; }
 
         /* --- ESTILOS ADICIONADOS PARA A SELEÇÃO DE MAPAS --- */
+        /* Removido pois a seleção de mapas foi removida */
+        /*
         #map-selection-overlay .menu-box {
-            width: 500px; /* Ajusta a largura para a lista de mapas */
+            width: 500px; 
             max-height: 90vh;
-            overflow-y: auto; /* Permite rolagem se houver muitos mapas */
-            text-align: left; /* Alinha o texto à esquerda dentro da caixa de mapa */
+            overflow-y: auto; 
+            text-align: left;
         }
         #map-selection-overlay h2 {
-            text-align: center; /* Centraliza o título "Selecione um Mapa" */
+            text-align: center;
             font-size: 1.8rem;
             margin-top: 0;
             margin-bottom: 20px;
         }
         #map-list {
             display: flex;
-            flex-direction: column; /* Coloca os botões de mapa um embaixo do outro */
-            gap: 10px; /* Espaço entre os botões de mapa */
-            margin-bottom: 20px; /* Espaço abaixo da lista */
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
         }
+        */
     </style>
 </head>
 <body>
@@ -255,8 +258,8 @@
             <h1>ParkourBot</h1>
             <button id="start-game-btn" class="menu-button">Iniciar Jogo</button>
             <button id="how-to-play-btn" class="menu-button">Como Jogar</button>
-            <!-- BOTÃO PARA SELEÇÃO DE MAPAS -->
-            <button id="select-map-btn" class="menu-button">Mapas</button>
+            <!-- BOTÃO PARA SELEÇÃO DE MAPAS FOI REMOVIDO -->
+            <!-- <button id="select-map-btn" class="menu-button">Mapas</button> -->
         </div>
         <div class="orientation-message">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -289,16 +292,18 @@
         </div>
     </div>
 
-    <!-- Tela de Seleção de Mapas -->
+    <!-- Tela de Seleção de Mapas FOI REMOVIDA -->
+    <!--
     <div id="map-selection-overlay" class="menu-overlay hidden">
         <div class="menu-box">
             <h2>Selecione um Mapa</h2>
             <div id="map-list">
-                <!-- Os botões dos mapas serão gerados aqui pelo JavaScript -->
+                
             </div>
             <button id="back-to-main-menu-btn" class="menu-button">Voltar</button>
         </div>
     </div>
+    -->
 
     <!-- Conteúdo do Jogo -->
     <canvas id="gameCanvas"></canvas>
@@ -554,111 +559,12 @@ function setupGameEventListeners() {
     joyContainer.addEventListener('touchstart', onJoyStart, { passive: true });
 }
 
-// --- APENAS O MAPA "QUASE LÁ" DEFINIDO COM O LAYOUT CORRIGIDO ---
-const maps = [
-    {
-        name: "Quase Lá",
-        layout: [
-            "-",        // Linha 0: Bloco na posição (0,0)
-            "@",        // Linha 1: Fim na posição (0,1)
-            "-  •",     // Linha 2: Bloco em (0,2) e Início em (3,2) - Espaços contam!
-            "----"      // Linha 3: Blocos em (0,3), (1,3), (2,3), (3,3)
-        ]
-    }
-];
+// --- FUNÇÕES DE MAPA REMOVIDAS ---
+// const maps = []; // Removido
+// let currentMapIndex = 0; // Removido
 
-let currentMapIndex = 0; // Para saber qual mapa está carregado
-
-function populateMapList() {
-    const mapListDiv = document.getElementById('map-list');
-    mapListDiv.innerHTML = ''; // Limpa a lista antes de preencher
-
-    maps.forEach((mapData, index) => {
-        const button = document.createElement('button');
-        button.textContent = mapData.name;
-        button.classList.add('menu-button');
-        button.style.marginBottom = '10px'; // Adiciona um pouco de espaço entre os botões
-
-        button.addEventListener('click', () => {
-            loadMap(index); // Carrega o mapa selecionado
-
-            // Fecha todos os menus e inicia o jogo no modo de edição
-            const mainMenu = document.getElementById('main-menu');
-            mainMenu.classList.add('hidden');
-            mainMenu.style.display = 'none'; // Esconde imediatamente
-
-            const mapSelectionOverlay = document.getElementById('map-selection-overlay');
-            mapSelectionOverlay.classList.add('hidden');
-            mapSelectionOverlay.style.display = 'none'; // Esconde imediatamente
-
-            document.getElementById('ui-container').classList.add('visible');
-            document.getElementById('joystick-container').classList.add('visible');
-            gameState = 'edit'; // Define o estado do jogo para edição
-            gameHasStarted = true; // Indica que o jogo já começou
-        });
-        mapListDiv.appendChild(button);
-    });
-}
-
-function loadMap(mapIndex) {
-    currentMapIndex = mapIndex;
-    const mapData = maps[mapIndex];
-    
-    // Limpa o estado atual do jogo
-    world.clear();
-    spawnPoint = null;
-    finishPoint = null;
-    yellowBalls = [];
-    nextBallNumber = 1; // Reseta a contagem das bolas
-
-    // Converte a representação de símbolos para o mundo do jogo
-    mapData.layout.forEach((row, y) => {
-        for (let x = 0; x < row.length; x++) { // Itera sobre cada caractere da linha (incluindo espaços)
-            const char = row[x];
-            const gx = x; // A posição X no grid do mapa é o índice do caractere na linha
-            const gy = y; // A posição Y no grid do mapa é o índice da linha no layout
-
-            switch (char) {
-                case '-': // Bloco
-                    setTile(gx, gy, 1);
-                    break;
-                case '•': // Começo (Spawn)
-                    spawnPoint = { x: gx, y: gy };
-                    break;
-                case '@': // Fim (Finish)
-                    finishPoint = { x: gx, y: gy };
-                    break;
-                case ' ': // Ar
-                    // Não faz nada, é espaço vazio
-                    break;
-                default:
-                    // Tenta converter para número caso seja uma bola
-                    const ballNumber = parseInt(char, 10);
-                    if (!isNaN(ballNumber)) {
-                        yellowBalls.push({ x: gx, y: gy, number: ballNumber });
-                        nextBallNumber = Math.max(nextBallNumber, ballNumber + 1); // Garante que a próxima bola tenha um número maior
-                    }
-                    break;
-            }
-        }
-    });
-    
-    // Ajusta a câmera para o centro do mapa carregado
-    let mapGridWidth = 0;
-    mapData.layout.forEach(row => {
-        if (row.length > mapGridWidth) {
-            mapGridWidth = row.length;
-        }
-    });
-    const mapWidth = mapGridWidth * TILE_SIZE;
-    const mapHeight = mapData.layout.length * TILE_SIZE;
-    
-    camera.targetX = (mapWidth / 2) - canvas.width / 2;
-    camera.targetY = (mapHeight / 2) - canvas.height / 2;
-
-    console.log(`Mapa "${mapData.name}" carregado.`);
-}
-
+// function populateMapList() { ... } // Removido
+// function loadMap(mapIndex) { ... } // Removido
 
 function init() {
     const style = getComputedStyle(document.body);
@@ -684,12 +590,11 @@ function init() {
 
         document.getElementById('ui-container').classList.add('visible');
         document.getElementById('joystick-container').classList.add('visible');
-        gameState = 'edit';
-        gameHasStarted = true;
-        // Ao iniciar o jogo, o mapa já deve ter sido carregado pelo loadMap(0) inicial.
-        // Se quiser garantir que o mapa selecionado (ou padrão) seja recarregado ao clicar em "Iniciar Jogo" novamente,
-        // descomente a linha abaixo:
-        // loadMap(currentMapIndex); 
+        gameState = 'edit'; // Define o estado do jogo para edição
+        gameHasStarted = true; // Indica que o jogo já começou
+
+        // Quando o jogo começa, o mundo está vazio, pronto para o usuário construir.
+        // Não precisamos carregar um mapa pré-definido.
     });
 
     document.getElementById('how-to-play-btn').addEventListener('click', () => {
@@ -706,40 +611,17 @@ function init() {
         }, 400);
     });
     
-    // Listener para o botão de selecionar mapas
-    document.getElementById('select-map-btn').addEventListener('click', () => {
-        const mainMenu = document.getElementById('main-menu');
-        mainMenu.classList.add('hidden');
-        setTimeout(() => {
-            mainMenu.style.display = 'none';
-        }, 400);
-
-        const mapSelectionOverlay = document.getElementById('map-selection-overlay');
-        mapSelectionOverlay.style.display = 'flex';
-        setTimeout(() => mapSelectionOverlay.classList.remove('hidden'), 10);
-
-        populateMapList(); // Preenche a lista de mapas quando o menu de seleção é aberto
-    });
-
-    // Listener para o botão de voltar do menu de mapas
-    document.getElementById('back-to-main-menu-btn').addEventListener('click', () => {
-        const mapSelectionOverlay = document.getElementById('map-selection-overlay');
-        mapSelectionOverlay.classList.add('hidden');
-        setTimeout(() => {
-            mapSelectionOverlay.style.display = 'none';
-        }, 400);
-
-        const mainMenu = document.getElementById('main-menu');
-        mainMenu.style.display = 'flex';
-        setTimeout(() => mainMenu.classList.remove('hidden'), 10);
-    });
+    // O botão de seleção de mapas foi removido do HTML e não será mais considerado aqui.
 
     setupGameEventListeners();
     camera.targetX = -canvas.width/2; // Ajuste inicial da câmera
     camera.targetY = -canvas.height/2;
     requestAnimationFrame(gameLoop);
+    
+    // NENHUM MAPA É CARREGADO AQUI, o usuário começa com um mundo vazio.
 }
 
+// Inicializa o jogo
 init();
 
 // Detecta se é celular
