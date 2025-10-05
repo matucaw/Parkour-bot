@@ -1,651 +1,166 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0000ff">
-    <meta charset="UTF-8">
-    <title>Parkour Bot – Jogo de Parkour Online</title>
-    <link rel="icon" type="image/png" href="favicon.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-
-    <!-- Meta tags para SEO -->
-    <meta name="description" content="Parkour Bot é um jogo online de parkour divertido, grátis para jogar. Complete desafios e teste suas habilidades em mundos incríveis.">
-    <meta name="keywords" content="Parkour Bot, jogo online, parkour, desafios, divertido, grátis, mundos em blocos, habilidade, Minecraft, browser game">
-    <meta name="author" content="Matucaw">
-    <meta name="robots" content="index, follow">
-
-    <!-- Fonte Pixelada para o Título -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --sky-color: #87CEEB;
-            --ground-color: #CD853F;
-            --ground-top-color: #DEB887;
-            --ai-color: #E63946;
-            --spawn-color: #FFD700;
-            --flag-pole-color: #666666;
-            --ball-color: #FFD700;
-            
-            --ui-bg: rgba(0, 0, 0, 0.5);
-            --ui-button-bg: #f0f0f0;
-            --ui-button-text: #333;
-            --ui-button-selected-border: #FFD700;
-        }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        html, body {
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: var(--sky-color) !important;
-            font-family: 'Arial Black', Gadget, sans-serif;
-            color: #fff;
-        }
-
-        canvas {
-            display: block;
-        }
-
-        #ui-container {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%;
-            padding: 10px;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-        #ui-container.visible {
-            display: flex;
-        }
-
-        .ui-panel {
-            display: flex;
-            gap: 10px;
-            padding: 8px;
-            background-color: var(--ui-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        .tool-button {
-            height: 50px; min-width: 60px; padding: 0 12px; background-color: var(--ui-button-bg);
-            color: var(--ui-button-text); border: 3px solid transparent; border-radius: 10px;
-            cursor: pointer; display: flex; justify-content: center; align-items: center;
-            transition: transform 0.1s ease, border-color 0.2s; font-size: 14px;
-            font-weight: bold; text-transform: uppercase;
-        }
-
-        #sim-button {
-            width: 50px; height: 50px; background-color: var(--ui-button-bg); border: 3px solid transparent;
-            border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center;
-            transition: transform 0.1s ease;
-        }
-
-        #sim-button svg { width: 24px; height: 24px; fill: var(--ui-button-text); }
-        .tool-button:active, #sim-button:active { transform: scale(0.95); }
-        .tool-button.selected { border-color: var(--ui-button-selected-border); }
-
-        #center-view-button {
-            width: 50px; min-width: 50px; padding: 0;
-        }
-        #center-view-button svg {
-            width: 28px; height: 28px; stroke: var(--ui-button-text); stroke-width: 2;
-        }
-        
-        #joystick-container {
-            position: absolute;
-            bottom: 20px; left: 20px;
-            width: 120px; height: 120px;
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 50%;
-            z-index: 20;
-            display: none;
-        }
-        #joystick-container.visible {
-            display: block;
-        }
-        #joystick-thumb {
-            position: absolute;
-            width: 60px; height: 60px;
-            top: 30px; left: 30px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 50%;
-            touch-action: none;
-        }
-
-        /* --- NOVOS ESTILOS DO MENU --- */
-        .menu-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(20, 20, 30, 0.7);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px); /* Suporte para Safari */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 200;
-            flex-direction: column;
-            text-align: center;
-            opacity: 1;
-            transition: opacity 0.4s ease-in-out;
-        }
-
-        .menu-overlay.hidden {
-            opacity: 0;
-            pointer-events: none; /* Impede cliques no menu invisível */
-        }
-
-        .menu-box {
-            background-color: rgba(255, 255, 255, 0.95);
-            color: var(--ui-button-text);
-            padding: 30px 40px;
-            border-radius: 20px;
-            border: 3px solid white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            max-width: 90%;
-            width: 450px;
-        }
-
-        .menu-box h1 {
-            font-family: 'Press Start 2P', cursive; /* Fonte pixelada! */
-            font-size: 2.5rem;
-            color: var(--spawn-color); /* Amarelo do spawn */
-            text-shadow: 4px 4px 0px var(--ground-color); /* Sombra 3D com a cor do chão */
-            margin: 0 0 35px 0;
-        }
-
-        .menu-button {
-            display: block; 
-            width: 100%; 
-            padding: 15px 20px; 
-            margin-bottom: 15px; 
-            font-family: 'Arial Black', Gadget, sans-serif;
-            font-size: 1.1rem;
-            font-weight: bold; 
-            text-transform: uppercase; 
-            cursor: pointer; 
-            border: 3px solid var(--ui-button-text);
-            border-radius: 12px; 
-            background-color: #fff; 
-            color: var(--ui-button-text);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-        }
-        .menu-button:last-child { margin-bottom: 0; }
-
-        .menu-button:hover { 
-            background-color: var(--ui-button-text); 
-            color: #fff; 
-            transform: translateY(-4px); /* Efeito de "levantar" */
-            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        }
-
-        .orientation-message {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            padding: 20px;
-            color: #fff;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px #000;
-        }
-        .orientation-message svg {
-            stroke: var(--spawn-color);
-        }
-
-        .menu-overlay.portrait-mode .menu-box {
-            display: none;
-        }
-        .menu-overlay.portrait-mode .orientation-message {
-            display: flex;
-        }
-
-        #how-to-play-overlay .menu-box { 
-            width: 500px; 
-            max-height: 90vh; 
-            overflow-y: auto; 
-            text-align: left;
-        }
-        #how-to-play-overlay h2 { 
-            text-align: center;
-            font-size: 1.8rem;
-            margin-top: 0; 
-            margin-bottom: 20px;
-        }
-        #how-to-play-overlay ul { padding-left: 20px; margin-top: 0; }
-        #how-to-play-overlay li { margin-bottom: 12px; }
-
-        /* --- ESTILOS ADICIONADOS PARA A SELEÇÃO DE MAPAS --- */
-        /* Removido pois a seleção de mapas foi removida */
-        /*
-        #map-selection-overlay .menu-box {
-            width: 500px; 
-            max-height: 90vh;
-            overflow-y: auto; 
-            text-align: left;
-        }
-        #map-selection-overlay h2 {
-            text-align: center;
-            font-size: 1.8rem;
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-        #map-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        */
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerar ou Ler um QR Code</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f9;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { color: #2c3e50; margin-bottom: 20px; }
+    .menu, .gerar, .ler { display: none; }
+    .ativo { display: block; }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      display: inline-block;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 400px;
+      box-sizing: border-box;
+    }
+    input, button {
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 95%;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+      background: #3498db;
+      color: white;
+      border: none;
+      transition: 0.3s;
+    }
+    button:hover { background: #2980b9; }
+    #qrcode, #resultado { margin-top: 20px; }
+    #resultado {
+      font-weight: bold;
+      font-size: 18px;
+      color: #333;
+      word-wrap: break-word;
+    }
+    @media (max-width: 480px) {
+      .card { padding: 15px; }
+      input, button { font-size: 18px; padding: 14px; }
+      #qrcode img { width: 90% !important; height: auto !important; }
+    }
+  </style>
 </head>
 <body>
 
-    <!-- Menu Principal -->
-    <div id="main-menu" class="menu-overlay">
-        <div class="menu-box">
-            <h1>ParkourBot</h1>
-            <button id="start-game-btn" class="menu-button">Iniciar Jogo</button>
-            <button id="how-to-play-btn" class="menu-button">Como Jogar</button>
-            <!-- BOTÃO PARA SELEÇÃO DE MAPAS FOI REMOVIDO -->
-            <!-- <button id="select-map-btn" class="menu-button">Mapas</button> -->
-        </div>
-        <div class="orientation-message">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="6" y="3" width="12" height="18" rx="2"></rect><path d="M12 18h.01"></path><path d="M18 7.5a6.002 6.002 0 0 0-4.23-4.23"></path><path d="M6 7.5a6 6 0 0 1 4.23-4.23"></path>
-            </svg>
-            <p>Por favor, vire o celular para o modo paisagem.</p>
-        </div>
-    </div>
+<h1>Gerar ou Ler um QR Code</h1>
 
-    <!-- Tela de Como Jogar -->
-    <div id="how-to-play-overlay" class="menu-overlay hidden">
-        <div class="menu-box">
-            <h2>Como Jogar</h2>
-            <p>O objetivo é criar um caminho para que o ParkourBot chegue do ponto de <strong>Início</strong> até a bandeira de <strong>Fim</strong>, coletando as <strong>Bolas Amarelas</strong> em ordem numérica se elas existirem.</p>
-            <h3>Ferramentas de Edição:</h3>
-            <ul>
-                <li><strong>Bloco:</strong> Cria blocos de terra. Toque e arraste para desenhar o cenário.</li>
-                <li><strong>Apagar:</strong> Remove blocos e outros objetos.</li>
-                <li><strong>Início:</strong> Define onde o Bot irá começar a fase.</li>
-                <li><strong>Fim:</strong> Define a bandeira de chegada.</li>
-                <li><strong>Bola:</strong> Coloca bolas numeradas que são o primeiro objetivo do Bot.</li>
-                <li><strong>Mira (Centralizar):</strong> Move a câmera de volta para o centro do mundo.</li>
-            </ul>
-            <h3>Simulação:</h3>
-            <ul>
-                <li><strong>Botão de Play:</strong> Inicia a simulação. O Bot irá para a bola com o menor número, e depois para a próxima, até acabar. Se não houver bolas, ele vai direto para a bandeira.</li>
-                <li><strong>Botão de Stop:</strong> Para a simulação e retorna ao modo de edição.</li>
-            </ul>
-            <button id="close-how-to-play-btn" class="menu-button">Fechar</button>
-        </div>
-    </div>
+<div class="menu ativo">
+  <div class="card">
+    <h2>O que deseja fazer?</h2>
+    <button onclick="mostrar('gerar')">Gerar QR Code</button>
+    <button onclick="mostrar('ler')">Ler QR Code</button>
+  </div>
+</div>
 
-    <!-- Tela de Seleção de Mapas FOI REMOVIDA -->
-    <!--
-    <div id="map-selection-overlay" class="menu-overlay hidden">
-        <div class="menu-box">
-            <h2>Selecione um Mapa</h2>
-            <div id="map-list">
-                
-            </div>
-            <button id="back-to-main-menu-btn" class="menu-button">Voltar</button>
-        </div>
-    </div>
-    -->
+<div class="gerar">
+  <div class="card">
+    <h2>Gerar QR Code</h2>
+    <input type="text" id="texto" placeholder="Digite texto ou URL">
+    <br>
+    <button onclick="gerarQRCode()">Gerar</button>
+    <div id="qrcode"></div>
+    <a id="download" style="display:none;" download="qrcode.png">📥 Baixar QR Code</a>
+    <br><br>
+    <button onclick="voltar()">⬅ Voltar</button>
+  </div>
+</div>
 
-    <!-- Conteúdo do Jogo -->
-    <canvas id="gameCanvas"></canvas>
-    <div id="ui-container">
-        <div class="ui-panel">
-            <button id="tool-block" class="tool-button selected" title="Bloco">Bloco</button>
-            <button id="tool-erase" class="tool-button" title="Borracha">Apagar</button>
-            <button id="tool-spawn" class="tool-button" title="Início">Início</button>
-            <button id="tool-finish" class="tool-button" title="Chegada">Fim</button>
-            <button id="tool-ball" class="tool-button" title="Bola Amarela">Bola</button>
-            <button id="center-view-button" class="tool-button" title="Centralizar Visão">
-                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>
-            </button>
-            <button id="sim-button" title="Iniciar Simulação">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            </button>
-        </div>
-    </div>
-    <div id="joystick-container">
-        <div id="joystick-thumb"></div>
-    </div>
-    
+<div class="ler">
+  <div class="card">
+    <h2>Ler QR Code</h2>
+    <input type="file" id="arquivo" accept="image/*">
+    <div id="resultado"></div>
+    <br>
+    <button onclick="voltar()">⬅ Voltar</button>
+  </div>
+</div>
+
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js')
-  .then(() => console.log('Service Worker registrado'))
-  .catch(err => console.log('Erro: ', err));
+function mostrar(secao) {
+  document.querySelector(".menu").classList.remove("ativo");
+  document.querySelector(".gerar").classList.remove("ativo");
+  document.querySelector(".ler").classList.remove("ativo");
+  document.querySelector("." + secao).classList.add("ativo");
 }
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-const TILE_SIZE = 40, GRAVITY = 1200, AI_SPEED = 120, AI_JUMP_POWER = 500;
-
-let gameState = 'menu', currentTool = 'block';
-let world = new Map(), spawnPoint = null, finishPoint = null;
-let yellowBalls = [], activeSimBalls = [], nextBallNumber = 1;
-
-let ai = {
-    x: 0, y: 0, w: TILE_SIZE * 0.8, h: TILE_SIZE * 0.8,
-    vx: 0, vy: 0, onGround: false, scaleY: 1, targetScaleY: 1
-};
-const colors = {};
-let camera = { x: 0, y: 0, targetX: 0, targetY: 0 };
-let lastTime = 0;
-let pan = { startX: 0, startY: 0, camX: 0, camY: 0, active: false };
-let isDrawing = false;
-let gameHasStarted = false;
-
-const ICONS = {
-    play: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
-    stop: `<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>`
-};
-
-const getGridCoords = (wx, wy) => ({ x: Math.floor(wx / TILE_SIZE), y: Math.floor(wy / TILE_SIZE) });
-const getTileKey = (gx, gy) => `${gx},${gy}`;
-const setTile = (gx, gy, type) => { if (type === 0) world.delete(getTileKey(gx, gy)); else world.set(getTileKey(gx, gy), type); };
-const getTile = (gx, gy) => world.get(getTileKey(gx, gy));
-const screenToWorld = (sx, sy) => ({ x: sx + camera.x, y: sy + camera.y });
-
-function startSimulation() {
-    if (!spawnPoint || !finishPoint) { alert("Defina um ponto de INÍCIO e FIM antes de simular!"); return; }
-    gameState = 'sim';
-    ai.x = spawnPoint.x * TILE_SIZE + (TILE_SIZE - ai.w) / 2;
-    ai.y = spawnPoint.y * TILE_SIZE + (TILE_SIZE - ai.h);
-    ai.vx = 0; ai.vy = 0; ai.onGround = false;
-    
-    activeSimBalls = [...yellowBalls].sort((a, b) => a.number - b.number);
-    
-    camera.targetX = ai.x - canvas.width / 2; camera.targetY = ai.y - canvas.height / 2;
-    camera.x = camera.targetX; camera.y = camera.targetY;
-    document.getElementById('sim-button').innerHTML = ICONS.stop;
-    document.getElementById('joystick-container').classList.remove('visible');
+function voltar() {
+  document.getElementById("resultado").innerText = "";
+  mostrar('menu');
 }
 
-function stopSimulation() {
-    gameState = 'edit';
-    document.getElementById('sim-button').innerHTML = ICONS.play;
-    document.getElementById('joystick-container').classList.add('visible');
-}
+function gerarQRCode() {
+  let texto = document.getElementById("texto").value;
+  // Permitir apenas os caracteres da lista fornecida
+  const permitido = /^[qwertyuiopasdfghjklzxcvbnm1234567890@#$_&\-+()\/\*"'`:;!?~`|•√π÷×§∆£¢€¥^°={}%©®™✓[\].,\\]*$/i;
+  if (!permitido.test(texto)) {
+    alert("⚠ Caractere inválido! Use apenas os permitidos na lista.");
+    return;
+  }
 
-function updateAI(dt) {
-    let currentTarget = activeSimBalls.length > 0 ? activeSimBalls[0] : finishPoint;
-    if (!currentTarget) { ai.vx = 0; return; }
+  document.getElementById("qrcode").innerHTML = "";
+  new QRCode(document.getElementById("qrcode"), { text: texto, width: 250, height: 250 });
 
-    const targetDirection = Math.sign(currentTarget.x * TILE_SIZE - ai.x);
-    ai.vx = targetDirection * AI_SPEED;
+  setTimeout(() => {
+    let qrDiv = document.getElementById("qrcode");
+    let canvas = qrDiv.querySelector("canvas"); // tenta pegar canvas
+    let img = qrDiv.querySelector("img"); // fallback para img
+    let link = document.getElementById("download");
 
-    if (ai.onGround) {
-        const aiBodyGridY = getGridCoords(ai.x, ai.y + ai.h / 2).y;
-        const frontGridX = getGridCoords(ai.x + ai.w / 2, ai.y).x + targetDirection;
-        const wallInFront = getTile(frontGridX, aiBodyGridY);
-        if (wallInFront) {
-            ai.vy = -AI_JUMP_POWER; ai.onGround = false; ai.targetScaleY = 0.7;
-        } else {
-            const edgeDetectorX = ai.x + (targetDirection > 0 ? ai.w + 1 : -1);
-            const edgeDetectorY = ai.y + ai.h + 1;
-            const groundUnderEdge = getTile(getGridCoords(edgeDetectorX, edgeDetectorY).x, getGridCoords(edgeDetectorX, edgeDetectorY).y);
-            if (!groundUnderEdge) {
-                ai.vy = -AI_JUMP_POWER; ai.onGround = false; ai.targetScaleY = 0.7;
-            }
-        }
+    if (canvas) {
+      link.href = canvas.toDataURL("image/png"); // garante PNG
+      link.style.display = "block";
+    } else if (img) {
+      link.href = img.src;
+      link.style.display = "block";
     }
+  }, 500);
+}
 
-    ai.vy += GRAVITY * dt;
-    ai.x += ai.vx * dt;
-    let gridX = getGridCoords(ai.x + (ai.vx > 0 ? ai.w : 0), ai.y + ai.h / 2);
-    if (getTile(gridX.x, gridX.y)) ai.x = (ai.vx > 0) ? gridX.x * TILE_SIZE - ai.w : (gridX.x + 1) * TILE_SIZE;
-    ai.y += ai.vy * dt;
-    ai.onGround = false;
-    const feetGrid = getGridCoords(ai.x + ai.w / 2, ai.y + ai.h);
-    if (ai.vy > 0 && getTile(feetGrid.x, feetGrid.y)) {
-        ai.y = feetGrid.y * TILE_SIZE - ai.h; ai.vy = 0; ai.onGround = true; ai.targetScaleY = 1.2;
+// Ler QR code via arquivo
+document.getElementById("arquivo").addEventListener("change", function(){
+  let file = this.files[0];
+  if (!file) return;
+  let reader = new FileReader();
+  reader.onload = function() {
+    let img = new Image();
+    img.onload = function() {
+      let canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      let ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let code = jsQR(imageData.data, canvas.width, canvas.height);
+      if (code) {
+        document.getElementById("resultado").innerText = "📌 Resultado: " + code.data;
+      } else {
+        document.getElementById("resultado").innerText = "❌ Nenhum QR Code encontrado.";
+      }
     }
-    const headGrid = getGridCoords(ai.x + ai.w / 2, ai.y);
-    if (ai.vy < 0 && getTile(headGrid.x, headGrid.y)) {
-        ai.y = (headGrid.y + 1) * TILE_SIZE; ai.vy = 0;
-    }
-    ai.scaleY += (ai.targetScaleY - ai.scaleY) * 0.2;
-    if(Math.abs(ai.scaleY - ai.targetScaleY) < 0.01) ai.targetScaleY = 1;
-    if (ai.y > camera.y + canvas.height + 200) stopSimulation();
-
-    const aiGridPos = getGridCoords(ai.x + ai.w/2, ai.y + ai.h/2);
-    if (aiGridPos.x === currentTarget.x && aiGridPos.y === currentTarget.y) {
-        if (currentTarget === activeSimBalls[0]) {
-            activeSimBalls.shift(); 
-        } else if (currentTarget === finishPoint) {
-            alert("ParkourBot Venceu!"); 
-            stopSimulation();
-        }
-    }
-}
-
-function drawFinishFlag(gx, gy) {
-    const px = gx * TILE_SIZE, py = gy * TILE_SIZE, poleWidth = TILE_SIZE / 10;
-    ctx.fillStyle = colors.flagPole;
-    ctx.fillRect(px + poleWidth, py, poleWidth, TILE_SIZE);
-    const flagX = px + poleWidth * 2, flagY = py, flagWidth = TILE_SIZE * 0.7, flagHeight = TILE_SIZE * 0.5;
-    const numChecksX = 4, numChecksY = 2, checkW = flagWidth / numChecksX, checkH = flagHeight / numChecksY;
-    for (let i = 0; i < numChecksY; i++) {
-        for (let j = 0; j < numChecksX; j++) {
-            ctx.fillStyle = (i + j) % 2 === 0 ? '#FFFFFF' : '#000000';
-            ctx.fillRect(flagX + j * checkW, flagY + i * checkH, checkW, checkH);
-        }
-    }
-}
-
-function drawYellowBall(ball) {
-    const px = ball.x * TILE_SIZE, py = ball.y * TILE_SIZE, radius = TILE_SIZE * 0.4;
-    ctx.fillStyle = colors.ball;
-    ctx.beginPath();
-    ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#000000';
-    ctx.font = `bold ${TILE_SIZE * 0.5}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(ball.number, px + TILE_SIZE / 2, py + TILE_SIZE / 2);
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (gameState !== 'menu') {
-        ctx.save();
-        ctx.translate(-camera.x, -camera.y);
-        const startCol = Math.floor(camera.x / TILE_SIZE)-1, endCol = startCol + Math.ceil(canvas.width / TILE_SIZE)+2;
-        const startRow = Math.floor(camera.y / TILE_SIZE)-1, endRow = startRow + Math.ceil(canvas.height / TILE_SIZE)+2;
-        for (let y = startRow; y < endRow; y++) {
-            for (let x = startCol; x < endCol; x++) {
-                if (getTile(x, y)) {
-                    ctx.fillStyle = getTile(x, y-1) ? colors.ground : colors.groundTop;
-                    ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    ctx.fillStyle = colors.ground;
-                    ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE + 10, TILE_SIZE, TILE_SIZE-10);
-                }
-            }
-        }
-        if (spawnPoint) { ctx.fillStyle = colors.spawn; ctx.fillRect(spawnPoint.x*TILE_SIZE, spawnPoint.y*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
-        if (finishPoint) drawFinishFlag(finishPoint.x, finishPoint.y);
-        
-        const ballsToDraw = (gameState === 'sim') ? activeSimBalls : yellowBalls;
-        ballsToDraw.forEach(drawYellowBall);
-
-        if (gameState === 'sim') {
-            ctx.fillStyle = colors.ai;
-            const scaledH = ai.h*ai.scaleY, scaledW = ai.w/ai.scaleY;
-            ctx.fillRect(ai.x+(ai.w-scaledW)/2, ai.y+ai.h-scaledH, scaledW, scaledH);
-        }
-        ctx.restore();
-    }
-}
-
-function gameLoop(timestamp) {
-    const dt = (timestamp - lastTime) / 1000 || 0;
-    lastTime = timestamp;
-    if (gameState === 'sim') { updateAI(dt); camera.targetX = ai.x-canvas.width/2; camera.targetY = ai.y-canvas.height/2; }
-    if (gameState !== 'menu') { camera.x += (camera.targetX-camera.x)*0.1; camera.y += (camera.targetY-camera.y)*0.1; }
-    draw();
-    requestAnimationFrame(gameLoop);
-}
-
-function handleEdit(e) {
-    if (gameState !== 'edit' || !isDrawing) return;
-    const touch = e.touches ? e.touches[0] : e;
-    const worldPos = screenToWorld(touch.clientX, touch.clientY);
-    const gridPos = getGridCoords(worldPos.x, worldPos.y);
-    
-    const isSpawn = spawnPoint && spawnPoint.x === gridPos.x && spawnPoint.y === gridPos.y;
-    const isFinish = finishPoint && finishPoint.x === gridPos.x && finishPoint.y === gridPos.y;
-    const ballIndex = yellowBalls.findIndex(b => b.x === gridPos.x && b.y === gridPos.y);
-
-    switch (currentTool) {
-        case 'block': setTile(gridPos.x, gridPos.y, 1); break;
-        case 'erase': 
-            if (isSpawn) spawnPoint = null; 
-            else if (isFinish) finishPoint = null; 
-            else if (ballIndex > -1) yellowBalls.splice(ballIndex, 1);
-            else setTile(gridPos.x, gridPos.y, 0); 
-            break;
-        case 'spawn': spawnPoint = gridPos; break;
-        case 'finish': finishPoint = gridPos; break;
-        case 'ball':
-            if (ballIndex === -1) {
-                yellowBalls.push({ x: gridPos.x, y: gridPos.y, number: nextBallNumber++ });
-            }
-            break;
-    }
-}
-
-function setupGameEventListeners() {
-    canvas.addEventListener('mousedown', e => { if (e.button === 0) { isDrawing = true; handleEdit(e); } else if (e.button === 1) { pan.active = true; pan.startX = e.clientX; pan.startY = e.clientY; pan.camX = camera.targetX; pan.camY = camera.targetY; } });
-    canvas.addEventListener('mousemove', e => { if (isDrawing) handleEdit(e); if (pan.active) { camera.targetX = pan.camX - (e.clientX - pan.startX); camera.targetY = pan.camY - (e.clientY - pan.startY); } });
-    window.addEventListener('mouseup', e => { isDrawing = false; if (e.button === 1) pan.active = false; });
-    canvas.addEventListener('touchstart', e => { if (e.touches.length === 1) { isDrawing = true; handleEdit(e); } else if (e.touches.length === 2) { isDrawing = false; pan.active = true; pan.startX = (e.touches[0].clientX + e.touches[1].clientX)/2; pan.startY = (e.touches[0].clientY + e.touches[1].clientY)/2; pan.camX = camera.targetX; pan.camY = camera.targetY; } }, { passive: false });
-    canvas.addEventListener('touchmove', e => { e.preventDefault(); if (isDrawing && e.touches.length === 1) handleEdit(e); else if (pan.active && e.touches.length === 2) { const currentX = (e.touches[0].clientX + e.touches[1].clientX)/2; const currentY = (e.touches[0].clientY + e.touches[1].clientY)/2; camera.targetX = pan.camX - (currentX - pan.startX); camera.targetY = pan.camY - (currentY - pan.startY); } }, { passive: false });
-    window.addEventListener('touchend', e => { if (e.touches.length < 2) pan.active = false; if (e.touches.length < 1) isDrawing = false; });
-    
-    const toolButtons = document.querySelectorAll('.tool-button');
-    toolButtons.forEach(btn => { btn.addEventListener('click', () => { toolButtons.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); currentTool = btn.id.split('-')[1]; }); });
-    document.getElementById('sim-button').addEventListener('click', () => { if (gameState === 'edit') startSimulation(); else stopSimulation(); });
-    document.getElementById('center-view-button').addEventListener('click', () => { camera.targetX = -canvas.width/2; camera.targetY = -canvas.height/2; });
-
-    const joyContainer = document.getElementById('joystick-container');
-    let touchId=null, startX=0, startY=0, isJoyActive=false;
-    function onJoyMove(e) { for (const t of e.changedTouches||[e]) { if (isJoyActive && (touchId===null||t.identifier===touchId)) { let dx=t.clientX-startX; let dy=t.clientY-startY; let camDirX=dx>10?1:dx<-10?-1:0; let camDirY=dy>10?1:dy<-10?-1:0; camera.targetX+=camDirX*5; camera.targetY+=camDirY*5; } } }
-    function onJoyEnd() { isJoyActive=false; touchId=null; window.removeEventListener('mousemove',onJoyMove); window.removeEventListener('mouseup',onJoyEnd); window.removeEventListener('touchmove',onJoyMove); window.removeEventListener('touchend',onJoyEnd); }
-    function onJoyStart(e) { e.stopPropagation(); isDrawing=false; pan.active=false; isJoyActive=true; const touch=e.changedTouches?e.changedTouches[0]:e; touchId=touch.identifier??null; 
-        startX=touch.clientX; startY=touch.clientY; window.addEventListener('mousemove',onJoyMove); window.addEventListener('mouseup',onJoyEnd); window.addEventListener('touchmove',onJoyMove); window.addEventListener('touchend',onJoyEnd);
-    }
-    joyContainer.addEventListener('mousedown', onJoyStart);
-    joyContainer.addEventListener('touchstart', onJoyStart, { passive: true });
-}
-
-// --- FUNÇÕES DE MAPA REMOVIDAS ---
-// const maps = []; // Removido
-// let currentMapIndex = 0; // Removido
-
-// function populateMapList() { ... } // Removido
-// function loadMap(mapIndex) { ... } // Removido
-
-function init() {
-    const style = getComputedStyle(document.body);
-    colors.sky = style.getPropertyValue('--sky-color');
-    colors.ground = style.getPropertyValue('--ground-color');
-    colors.groundTop = style.getPropertyValue('--ground-top-color');
-    colors.ai = style.getPropertyValue('--ai-color');
-    colors.spawn = style.getPropertyValue('--spawn-color');
-    colors.flagPole = style.getPropertyValue('--flag-pole-color');
-    colors.ball = style.getPropertyValue('--ball-color');
-
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    window.addEventListener('resize', resize);
-    resize();
-
-    // --- LÓGICA DO MENU ATUALIZADA ---
-    document.getElementById('start-game-btn').addEventListener('click', () => {
-        const mainMenu = document.getElementById('main-menu');
-        mainMenu.classList.add('hidden');
-        setTimeout(() => {
-            mainMenu.style.display = 'none';
-        }, 400); // Espera a animação de fade-out terminar
-
-        document.getElementById('ui-container').classList.add('visible');
-        document.getElementById('joystick-container').classList.add('visible');
-        gameState = 'edit'; // Define o estado do jogo para edição
-        gameHasStarted = true; // Indica que o jogo já começou
-
-        // Quando o jogo começa, o mundo está vazio, pronto para o usuário construir.
-        // Não precisamos carregar um mapa pré-definido.
-    });
-
-    document.getElementById('how-to-play-btn').addEventListener('click', () => {
-        const howToPlayMenu = document.getElementById('how-to-play-overlay');
-        howToPlayMenu.style.display = 'flex';
-        setTimeout(() => howToPlayMenu.classList.remove('hidden'), 10);
-    });
-
-    document.getElementById('close-how-to-play-btn').addEventListener('click', () => {
-        const howToPlayMenu = document.getElementById('how-to-play-overlay');
-        howToPlayMenu.classList.add('hidden');
-        setTimeout(() => {
-            howToPlayMenu.style.display = 'none';
-        }, 400);
-    });
-    
-    // O botão de seleção de mapas foi removido do HTML e não será mais considerado aqui.
-
-    setupGameEventListeners();
-    camera.targetX = -canvas.width/2; // Ajuste inicial da câmera
-    camera.targetY = -canvas.height/2;
-    requestAnimationFrame(gameLoop);
-    
-    // NENHUM MAPA É CARREGADO AQUI, o usuário começa com um mundo vazio.
-}
-
-// Inicializa o jogo
-init();
-
-// Detecta se é celular
-function isMobile() {
-    return /Android|iPhone|iPad|iPod|Windows Phone|webOS/i.test(navigator.userAgent);
-}
-
-function checkOrientation() {
-    const menu = document.getElementById("main-menu");
-    if (isMobile()) {
-        if (window.innerHeight > window.innerWidth) {
-            menu.classList.add("portrait-mode");
-        } else {
-            menu.classList.remove("portrait-mode");
-        }
-    } else {
-        menu.classList.remove("portrait-mode");
-    }
-}
-
-// Executa ao carregar e sempre que girar a tela
-window.addEventListener("load", checkOrientation);
-window.addEventListener("resize", checkOrientation);
-window.addEventListener("orientationchange", checkOrientation);
+    img.src = reader.result;
+  }
+  reader.readAsDataURL(file);
+});
 </script>
+
 </body>
 </html>
